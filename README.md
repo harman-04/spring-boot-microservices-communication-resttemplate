@@ -49,13 +49,44 @@ Uses a **Native Query** to find an address based on an `employee_id`. This demon
 ---
 ## Key Concepts Explained Simply:
 ### Component Analysis
+# Microservices Architecture Breakdown
 
-| Component              | Responsibility & Implementation Details                                                                                                                                                                                                                                                                                                                                                                          |
-|:-----------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Employee Entity**    | **@Entity**: Marks this class as a JPA entity for Hibernate mapping.<br>**@Table(name = "employee")**: Explicitly defines the database table name.<br>**@Id / @GeneratedValue**: Defines primary key with identity auto-increment strategy.<br>**@Column**: Maps Java fields to specific database columns.<br>**Lombok**: Uses @Data, @AllArgsConstructor, and @NoArgsConstructor to eliminate boilerplate code. |
-| **EmployeeRepository** | **JpaRepository<Employee, Integer>**: Inherits full CRUD functionality and pagination.<br>**@Repository**: Marks as a Spring bean and enables automatic exception translation.<br>**Query Methods**: Supports derivation (e.g., findByEmail) and @Query annotations for custom SQL/JPQL.                                                                                                                         |
-| **EmployeeConfig**     | **@Configuration**: Registers the class as a source of bean definitions for the Spring IoC container.<br>**ModelMapper Bean**: Provides an instance for automated Entity-to-DTO conversion.<br>**RestTemplate Bean**: Enables synchronous HTTP communication with external microservices (e.g., Address Service).                                                                                                |
-| **EmployeeService**    | **Data Orchestration**: Combines local data from EmployeeRepository with external data from RestTemplate.<br>**Mapping**: Utilizes ModelMapper to transform internal Entities into external-facing EmployeeResponse DTOs.<br>**Microservice Integration**: Acts as the client for the Address Service to aggregate a complete user profile.                                                                      |
+## Employee Service (Port: 8080)
+
+| Component | Responsibility & Implementation Details |
+| :--- | :--- |
+| **Employee Entity** | **@Entity**: Marks this class as a JPA entity where Hibernate maps it to a database table.<br>**@Table(name = "employee")**: Explicitly sets the table name to "employee" in MySQL.<br>**@Id + @GeneratedValue**: Defines the Primary key with an auto-increment strategy.<br>**@Column**: Maps Java fields directly to table columns.<br>**Lombok**: Includes **@Data** (getters/setters, etc.), **@AllArgsConstructor**, and **@NoArgsConstructor**. |
+| **EmployeeRepository** | **JpaRepository<Employee, Integer>**: Provides CRUD operations out-of-the-box and saves boilerplate DAO code.<br>**@Repository**: Marks as a Spring bean and enables exception translation.<br>**Custom Queries**: Supports generated SQL based on method names (e.g., `findByEmail`). |
+| **EmployeeConfig** | **@Configuration**: Marks this class as a configuration provider.<br>**ModelMapper Bean**: Used for mapping between Entity ↔ DTO to avoid manual field copying.<br>**RestTemplate Bean**: Used for making synchronous HTTP requests to other services (e.g., calling Address Service). |
+| **EmployeeService** | **Orchestration**: Fetches primary employee data from MySQL and uses **RestTemplate** to call the external Address Service.<br>**Mapping**: Converts the internal Employee entity into an **EmployeeResponse** DTO.<br>**Aggregation**: Combines employee data + address data into a single response. |
+| **AddressResponse (DTO)** | **DTO Pattern**: Used to transfer data between microservices while keeping responses lightweight.<br>**Lombok**: Uses **@Data**, **@AllArgsConstructor**, and **@NoArgsConstructor**.<br>**Integration**: EmployeeService maps the response from Address Service into this DTO to attach it to the EmployeeResponse. |
+| **EmployeeResponse (DTO)** | **Structured Data**: Holds employee details (id, name, email, age) and a nested **AddressResponse** object.<br>**Clean API**: Keeps responses clean and avoids exposing internal entity details directly. |
+| **EmployeeController** | **@RestController**: Marks this as a REST API controller returning JSON directly.<br>**@GetMapping("/employees/{id}")**: Maps GET requests with a path variable.<br>**ResponseEntity**: Wraps the response with HTTP status codes for proper RESTful formatting.<br>**Delegation**: Delegates logic to EmployeeService to keep the controller lightweight. |
+| **Employee Service Application** | **@SpringBootApplication**: Marks the main entry point and triggers auto-configuration.<br>**Integration**: Boots the entire stack including Controller, Service, and Repository layers. |
+
+---
+
+## Address Service (Port: 8081)
+
+| Component | Responsibility & Implementation Details |
+| :--- | :--- |
+| **Address Entity** | **@Entity**: Marks the class as a JPA entity.<br>**@Table(name = "address")**: Sets the table name to "address".<br>**@Id + @GeneratedValue**: Primary key with auto-increment.<br>**employeeId**: Links the address to a specific employee (Foreign Key logic). |
+| **AddressRepository** | **JpaRepository**: Provides built-in CRUD methods.<br>**Custom Query (@Query)**: Allows writing raw SQL queries to fetch address by `employee_id`.<br>**Optional<Address>**: Prevents NullPointerExceptions and forces safe handling of missing data. |
+| **AddressResponse (DTO)** | **DTO Pattern**: Transfers structured data while protecting internal entity structures.<br>**Integration**: The Address entity is mapped into this DTO via ModelMapper before being returned to the client or the Employee Service. |
+| **AddressConfig** | **@Configuration**: Manages IoC beans.<br>**ModelMapper Bean**: Injected into AddressService to automate the Entity ↔ DTO transformation. |
+| **AddressService** | **Service Layer**: Fetches data via AddressRepository using `employeeId`.<br>**Optional Handling**: Uses `.orElseThrow()` to ensure clear exceptions if no address exists.<br>**Encapsulation**: Keeps business logic separated from the web layer. |
+| **AddressController** | **@RestController**: Handles HTTP requests and returns JSON responses.<br>**@GetMapping("/address/{employeeId}")**: Maps GET requests for specific employees.<br>**ResponseEntity**: Ensures the AddressResponse is sent with the correct HTTP status. |
+| **Address Service Application** | **Main Class**: Uses `SpringApplication.run()` to load the specific Address Service context and beans. |
+
+---
+
+## application.properties (Infrastructure)
+
+| Feature | Logic & Microservice Behavior |
+| :--- | :--- |
+| **Port Separation** | **Employee Service**: 8080<br>**Address Service**: 8081<br>Ensures both microservices can run simultaneously without port conflicts. |
+| **Context Path** | Adds a prefix to all endpoints (e.g., `/address-service/`).<br>Helps organize APIs and prevents overlap when multiple services run on the same host. |
+| **Service URLs** | **Employee**: `http://localhost:8080/employee-service/...`<br>**Address**: `http://localhost:8081/address-service/...` |
 ---
 ## Overall Flow
 This is a classic microservices communication example. You have two independent Spring Boot services:
@@ -129,7 +160,6 @@ This diagram shows exactly which class calls which method across the two service
     * *Code:* `employeeResponse.setAddressResponse(addressResponse);`
 
 
-13. **Final Return:** The fully populated `EmployeeResponse` is returned up the chain to the `EmployeeController`, which sends it as the final JSON response to the client.
 ---
 
 ##  How to Run & Test
