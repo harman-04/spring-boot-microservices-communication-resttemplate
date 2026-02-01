@@ -48,10 +48,9 @@ Uses a **Native Query** to find an address based on an `employee_id`. This demon
 
 ---
 ## Key Concepts Explained Simply:
-### Component Analysis
-# Microservices Architecture Breakdown
+## Microservices Architecture Breakdown
 
-## Employee Service (Port: 8080)
+### Employee Service (Port: 8080)
 
 | Component | Responsibility & Implementation Details |
 | :--- | :--- |
@@ -66,7 +65,7 @@ Uses a **Native Query** to find an address based on an `employee_id`. This demon
 
 ---
 
-## Address Service (Port: 8081)
+### Address Service (Port: 8081)
 
 | Component | Responsibility & Implementation Details |
 | :--- | :--- |
@@ -80,7 +79,7 @@ Uses a **Native Query** to find an address based on an `employee_id`. This demon
 
 ---
 
-## application.properties (Infrastructure)
+### application.properties (Infrastructure)
 
 | Feature | Logic & Microservice Behavior |
 | :--- | :--- |
